@@ -16,16 +16,61 @@ expenses_type = ["food", "gas", "groceries", "travel", 'other']
 
 
 def save_expense():
-    with open('expenses.json', 'w') as file:
-        json.dump(expenses, file, indent=2)
+    try:
+        with open('expenses.json', 'w') as file:
+            json.dump(expenses, file, indent=2)
+    except IOError as e:
+        print(f"Error saving expenses: {e}")
+    except Exception as e:
+        print(f"Unexpected error while saving: {e}")
 
 
 def load_expense():
     try:
         with open('expenses.json', "r") as file:
-            return json.load(file)
+            content = file.read().strip()
+
+            if not content:
+                print("Expense file is empty, starting fresh.")
+                return []
+
+            try:
+                data = json.loads(content)
+
+                if not isinstance(data, list):
+                    print(
+                        "Warning: Invalid data format in expenses.json. Starting fresh.")
+                    return []
+
+                valid_expenses = []
+                for exp in data:
+                    if isinstance(exp, dict) and all(key in exp for key in ['amount', 'category', 'date', 'description']):
+                        valid_expenses.append(exp)
+                    else:
+                        print(
+                            f"Warning: Skipping invalid expense entry: {exp}")
+
+                return valid_expenses
+
+            except json.JSONDecodeError as e:
+                print(
+                    f"Error: expenses.json contains invalid JSON format: {e}")
+                print("Creating backup and starting fresh.")
+
+                try:
+                    with open("expenses_backup.json", "w") as backup:
+                        backup.write(content)
+                    print("Corrupted file backed up as expenses_backup.json")
+                except:
+                    pass
+
+                return []
+
     except FileNotFoundError:
-        print("File does not exist. Please add an expense if this is your first time running the program.")
+        print("File does not exist, please add an expense if this is your first time running the program.")
+        return []
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
         return []
 
 
@@ -74,13 +119,12 @@ def add_expense():
         "category": category_input,
         "date": expense_date,
         "description": description
-
     }
     expenses.append(new_expense)
     save_expense()
     print("Here is your added expense: ")
     print(
-        f"${new_expense['amount']} | {new_expense['category'].capitalize()} | {new_expense['date']} | {new_expense["description"].capitalize()}")
+        f"${new_expense['amount']} | {new_expense['category'].capitalize()} | {new_expense['date']} | {new_expense['description'].capitalize()}")
 
 
 def view_expense():
@@ -164,7 +208,6 @@ def view_monthly():
 
 
 def display_menu():
-
     while True:
         print(menu)
         try:
